@@ -53,7 +53,7 @@ async function update() {
             // --- show updating
             document.getElementById('last-updated').innerHTML = `正在更新状态, 请稍候... <a href="javascript:location.reload();" target="_self" style="color: rgb(0, 255, 0);">刷新页面</a>`;
             // fetch data
-            fetch(url + 'query', { timeout: 10000 })
+            fetch(url + 'query?t='+Date.now().toString(), { timeout: 10000 })
                 .then(response => response.json())
                 .then(async (data) => {
                     console.log(data);
