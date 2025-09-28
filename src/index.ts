@@ -1129,10 +1129,11 @@ app.get("/api/device/private", async (c) => {
   if (!(await Utils.auth_check(c))) {
     return c.text("unauthorized", 401);
   }
-  let privateMode = Boolean(c.req.query("private"));
-  if (privateMode === undefined) {
+  let privateModeString = c.req.query("private");
+  if (privateModeString === undefined) {
     return c.text("invalid private", 400);
   }
+  let privateMode = privateModeString === "true" || privateModeString === "1";
   let data = new Data(c.env);
   const currentPrivateMode = await data.get_private_mode() || false;
 
