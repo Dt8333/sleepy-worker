@@ -939,7 +939,8 @@ app.get("/api/status/set", async (c) => {
       status = statusEvent.newStatus.id;
     }
 
-    data.set_status_id(status);
+    await data.set_status_id(status);
+    await data.set_last_updated();
   }
   return c.json({
     success: true,
@@ -1008,13 +1009,19 @@ app.get("/api/device/set", async (c) => {
     device_status = deviceEvent.status || undefined;
   }
 
+  const success = await data.set_device(
+    device_id || '',
+    device_show_name,
+    device_using,
+    device_status
+  );
+
+  if (success) {
+    await data.set_last_updated();
+  }
+
   return c.json({
-    success: await data.set_device(
-      device_id || '',
-      device_show_name,
-      device_using,
-      device_status
-    ),
+    success: success,
   });
 });
 
@@ -1056,13 +1063,19 @@ app.post("/api/device/set", async (c) => {
   }
 
   let data = new Data(c.env);
+  const success = await data.set_device(
+    device_id,
+    device_show_name,
+    device_using,
+    device_status
+  );
+
+  if (success) {
+    await data.set_last_updated();
+  }
+
   return c.json({
-    success: await data.set_device(
-      device_id,
-      device_show_name,
-      device_using,
-      device_status
-    ),
+    success: success,
   });
 });
 
@@ -1099,8 +1112,14 @@ app.get("/api/device/remove", async (c) => {
     device_id = deviceEvent.deviceId;
   }
 
+  const success = await data.remove_device(device_id);
+
+  if (success) {
+    await data.set_last_updated();
+  }
+
   return c.json({
-    success: await data.remove_device(device_id),
+    success: success,
   });
 });
 
@@ -1121,8 +1140,14 @@ app.get("/api/device/clear", async (c) => {
     }
   }
 
+  const success = await data.clear_device();
+
+  if (success) {
+    await data.set_last_updated();
+  }
+
   return c.json({
-    success: await data.clear_device(),
+    success: success,
   });
 });
 
@@ -1157,8 +1182,14 @@ app.get("/api/device/private", async (c) => {
     }
   }
 
+  const success = await data.set_private_mode(privateMode);
+
+  if (success) {
+    await data.set_last_updated();
+  }
+
   return c.json({
-    success: await data.set_private_mode(privateMode),
+    success: success,
   });
 });
 
@@ -1248,6 +1279,9 @@ app.post("/api/metrics/reset", async (c) => {
     });
 
     console.log('[Metrics] Manual reset completed');
+
+    // 触发客户端更新，因为 metrics 重置会影响主页统计显示
+    await data.set_last_updated();
 
     return c.json({
       success: true,

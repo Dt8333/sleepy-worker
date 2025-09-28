@@ -6,6 +6,7 @@
 import { Context } from 'hono';
 import { PluginManager } from './manager';
 import { Utils } from '../index';
+import { Data } from '../data';
 
 /**
  * 获取所有插件状态
@@ -77,6 +78,14 @@ export async function handleEnablePlugin(c: Context): Promise<Response> {
     const success = await manager.enablePlugin(pluginName, initialData);
 
     if (success) {
+      // 触发客户端更新，因为插件启用可能会影响主页卡片显示
+      try {
+        const data = new Data(c.env);
+        await data.set_last_updated();
+      } catch (error) {
+        console.error('[PluginAPI] Failed to set last updated after enabling plugin:', error);
+      }
+
       return c.json({
         success: true,
         message: `Plugin ${pluginName} enabled successfully`,
@@ -124,6 +133,14 @@ export async function handleDisablePlugin(c: Context): Promise<Response> {
     const success = await manager.disablePlugin(pluginName);
 
     if (success) {
+      // 触发客户端更新，因为插件禁用可能会影响主页卡片显示
+      try {
+        const data = new Data(c.env);
+        await data.set_last_updated();
+      } catch (error) {
+        console.error('[PluginAPI] Failed to set last updated after disabling plugin:', error);
+      }
+
       return c.json({
         success: true,
         message: `Plugin ${pluginName} disabled successfully`,
@@ -160,6 +177,14 @@ export async function handleReloadPlugins(c: Context): Promise<Response> {
   try {
     const manager = PluginManager.getInstance();
     await manager.reloadAllPlugins();
+
+    // 触发客户端更新，因为插件重载可能会影响主页卡片显示
+    try {
+      const data = new Data(c.env);
+      await data.set_last_updated();
+    } catch (error) {
+      console.error('[PluginAPI] Failed to set last updated after reloading plugins:', error);
+    }
 
     const stats = await manager.getStats();
 
