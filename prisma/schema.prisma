@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model MainData {
+  id          Int      @id @default(0)
+  status      Int      @default(0)
+  privateMode Boolean  @default(false) @map("private_mode")
+  lastUpdated DateTime @default(now()) @updatedAt @map("last_updated")
+
+  @@map("main")
+}
+
+model DeviceStatusData {
+  id          String   @id
+  showName    String   @map("show_name")
+  using       Boolean?
+  status      String?
+  fields      Json
+  lastUpdated DateTime @default(now()) @updatedAt @map("last_updated")
+
+  @@map("device_status")
+}
+
+model MetricsMetaData {
+  id    Int    @id @default(0)
+  today String @default("")
+  week  String @default("")
+  month String @default("")
+  year  String @default("")
+
+  @@map("metrics_meta")
+}
+
+model MetricsData {
+  path    String @id
+  daily   Int    @default(0)
+  weekly  Int    @default(0)
+  monthly Int    @default(0)
+  yearly  Int    @default(0)
+  total   Int    @default(0)
+
+  @@map("metrics")
+}
+
+model PluginData {
+  id   String @id
+  data Json
+
+  @@map("plugins")
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sleepy-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-26",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sleepy",
+      "database_id": "23cccba1-c9cb-4cc1-b998-e7ac6923a832"
+    }
+  ],
+  "assets": {
+    "directory": "./theme",
+    "binding": "ASSETS",
+  },
+  "vars": {
+    "SECRET":"YOURSECRET",
+  },
+  "routes": [
+    {
+      "pattern": "status.dalenull.work",
+      "custom_domain": true
+    }
+  ],
+}

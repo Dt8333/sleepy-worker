@@ -170,3 +170,17 @@ dist
 
 .dev.vars
 .wrangler/
+
+
+# dev
+.vscode/*
+!.vscode/launch.json
+!.vscode/*.code-snippets
+.idea/workspace.xml
+.idea/usage.statistics.xml
+.idea/shelf
+
+# misc
+.DS_Store
+
+/src/generated/prisma
