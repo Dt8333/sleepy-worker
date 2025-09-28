@@ -1003,7 +1003,7 @@ app.get("/api/device/set", async (c) => {
 
     // 使用事件中可能被修改的值
     device_id = deviceEvent.deviceId || undefined;
-    device_show_name = deviceEvent.showName || undefined;
+    device_show_name = deviceEvent.show_name || undefined;
     device_using = deviceEvent.using ?? device_using;
     device_status = deviceEvent.status || undefined;
   }
@@ -1050,7 +1050,7 @@ app.post("/api/device/set", async (c) => {
 
     // 使用事件中可能被修改的值
     device_id = deviceEvent.deviceId || device_id;
-    device_show_name = deviceEvent.showName || device_show_name;
+    device_show_name = deviceEvent.show_name || device_show_name;
     device_using = deviceEvent.using ?? device_using;
     device_status = deviceEvent.status || device_status;
   }
@@ -1084,7 +1084,7 @@ app.get("/api/device/remove", async (c) => {
     const deviceEvent = new DeviceRemovedEvent(
       !!device,
       device_id,
-      device?.showName || null,
+      device?.show_name || null,
       device?.using || null,
       device?.status || null,
       (device?.fields as Record<string, any>) || null,

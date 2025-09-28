@@ -116,10 +116,10 @@ export class Data {
       device_list = device_raw_list;
       if (this.config.status.sorted) {
         device_list.sort((a, b) => {
-          if (a.showName < b.showName) {
+          if (a.show_name < b.show_name) {
             return -1;
           }
-          if (a.showName > b.showName) {
+          if (a.show_name > b.show_name) {
             return 1;
           }
           return 0;
@@ -130,7 +130,7 @@ export class Data {
       let not_using = this.config.status.not_using;
       device_list.forEach((d) => {
         if (d.using === false) {
-          d.showName = not_using;
+          d.show_name = not_using;
         }
       });
     }
@@ -148,20 +148,20 @@ export class Data {
 
   async set_device(
     id: string,
-    showName: string | undefined = undefined,
+    show_name: string | undefined = undefined,
     using: boolean | undefined = undefined,
     status: string | undefined = undefined,
     fields: InputJsonValue | undefined = undefined
   ) {
     this.deviceStatusData ??= await this.DBClient?.deviceStatusData.findMany();
     if (!this.deviceStatusData.find((d) => d.id == id)) {
-      if (showName === undefined) {
+      if (show_name === undefined) {
         return false;
       }
       await this.DBClient?.deviceStatusData.create({
         data: {
           id: id,
-          showName: showName,
+          show_name: show_name,
           using: using,
           status: status,
           fields: fields ?? {},
@@ -171,7 +171,7 @@ export class Data {
     }
     await this.DBClient?.deviceStatusData.update({
       data: {
-        showName: showName,
+        show_name: show_name,
         using: using,
         status: status,
         fields: fields,

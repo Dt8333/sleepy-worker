@@ -270,7 +270,7 @@ export class DeviceSetEvent extends BaseEvent {
 
   constructor(
     public deviceId: string | null,
-    public showName: string | null,
+    public show_name: string | null,
     public using: boolean | null,
     public status: string | null,
     public fields: Record<string, any>,
@@ -289,7 +289,7 @@ export class DeviceRemovedEvent extends BaseEvent {
   constructor(
     public exists: boolean,
     public deviceId: string,
-    public showName: string | null,
+    public show_name: string | null,
     public using: boolean | null,
     public status: string | null,
     public fields: Record<string, any> | null,

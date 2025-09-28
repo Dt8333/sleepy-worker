@@ -22,7 +22,7 @@ model MainData {
 
 model DeviceStatusData {
   id          String   @id
-  showName    String   @map("show_name")
+  show_name   String   @map("show_name")
   using       Boolean?
   status      String?
   fields      Json

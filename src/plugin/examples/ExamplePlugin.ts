@@ -216,7 +216,7 @@ export class ExamplePlugin extends Plugin {
     this.registerEvent<DeviceSetEvent>('device_set', async (event) => {
       console.log(`[${this.config.name}] 设备状态设置:`, {
         deviceId: event.deviceId,
-        showName: event.showName,
+        show_name: event.show_name,
         using: event.using,
         status: event.status
       });
