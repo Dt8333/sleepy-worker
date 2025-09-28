@@ -799,6 +799,7 @@ async function query(c: Context) {
     status: stinfo,
     device: await data.device_list(),
     last_updated: await data.get_last_updated(),
+    private_mode: await data.get_private_mode(),
   };
 
   // 检查是否需要包含 metadata
