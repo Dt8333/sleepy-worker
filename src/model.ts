@@ -28,7 +28,7 @@ class MainConfigModel {
 }
 
 class PageConfigModel {
-  name: string = "User";
+  name: string = "Dale";
   title: string = `${this.name} Alive?`;
   desc: string = `${this.name} \'s Online Status Page`;
   favicon: string = "/favicon.ico";
@@ -46,8 +46,8 @@ class StatusConfigModel {
   sorted: boolean = false;
   using_first: boolean = false;
   status_list: StatusItemModel[] = [
-    { id: 0, name: "Awake", desc: "Online", color: "awake" },
-    { id: 1, name: "Asleep", desc: "Idle", color: "sleeping" },
+    { id: 0, name: "Awake", desc: "目前在线，可以通过任何可用的联系方式联系本人。", color: "awake" },
+    { id: 1, name: "Asleep", desc: "睡似了或其他原因不在线，紧急情况请使用电话联系。", color: "sleeping" },
   ];
 }
 

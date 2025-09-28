@@ -19,6 +19,8 @@ export class Data {
   metricsMetaData: MetricsMetaData | null = null;
   metricsData: MetricsData[] | null = null;
   pluginData: PluginData[] | null = null;
+  private lastMetricsCheck: number = 0; // 上次检查重置的时间戳
+  private readonly METRICS_CHECK_INTERVAL = 5 * 60 * 1000; // 5分钟检查一次
 
   constructor(env: Bindings) {
     let adapter = new PrismaD1(env.DB);
@@ -77,7 +79,7 @@ export class Data {
 
   async get_last_updated() {
     this.mainData ??= await this.DBClient?.mainData.findFirst();
-    return this.mainData?.lastUpdated;
+    return this.mainData?.lastUpdated ? Math.floor(this.mainData.lastUpdated.getTime() / 1000) : null;
   }
 
   async set_last_updated() {
@@ -132,7 +134,10 @@ export class Data {
         }
       });
     }
-    return device_list;
+    return device_list.map(device => ({
+      ...device,
+      last_updated: Math.floor(device.lastUpdated.getTime() / 1000)
+    }));
   }
 
   async get_device(id: string) {
@@ -262,6 +267,109 @@ export class Data {
     return [indexMetricData.daily,indexMetricData.weekly,indexMetricData.monthly,indexMetricData.yearly,indexMetricData.total]
   }
 
+  /**
+   * 检查并重置过期的 metrics 计数
+   * @param timezone 时区，例如 'Asia/Shanghai'
+   */
+  async checkAndResetMetrics(timezone: string = 'Asia/Shanghai') {
+    // 检查是否需要进行重置检查（避免频繁查询数据库）
+    const now = Date.now();
+    if (now - this.lastMetricsCheck < this.METRICS_CHECK_INTERVAL) {
+      return;
+    }
+    this.lastMetricsCheck = now;
+
+    // 获取当前时间（按指定时区）
+    const currentTime = new Date(new Date().toLocaleString("en-US", { timeZone: timezone }));
+
+    // 获取当前的日期标识
+    const currentDay = currentTime.toISOString().split('T')[0]; // YYYY-MM-DD
+    const currentWeek = this.getWeekIdentifier(currentTime); // YYYY-WW
+    const currentMonth = `${currentTime.getFullYear()}-${(currentTime.getMonth() + 1).toString().padStart(2, '0')}`; // YYYY-MM
+    const currentYear = currentTime.getFullYear().toString(); // YYYY
+
+    // 获取存储的最后重置时间
+    this.metricsMetaData = await this.DBClient?.metricsMetaData.findFirst();
+    if (!this.metricsMetaData) {
+      // 如果没有元数据，创建并设置当前时间
+      await this.DBClient?.metricsMetaData.create({
+        data: {
+          id: 0,
+          today: currentDay,
+          week: currentWeek,
+          month: currentMonth,
+          year: currentYear
+        }
+      });
+      return;
+    }
+
+    const updates: any = {};
+    const resetFields: string[] = [];
+
+    // 检查是否需要重置年度计数
+    if (this.metricsMetaData.year !== currentYear) {
+      resetFields.push('yearly');
+      updates.year = currentYear;
+    }
+
+    // 检查是否需要重置月度计数
+    if (this.metricsMetaData.month !== currentMonth) {
+      resetFields.push('monthly');
+      updates.month = currentMonth;
+    }
+
+    // 检查是否需要重置周计数
+    if (this.metricsMetaData.week !== currentWeek) {
+      resetFields.push('weekly');
+      updates.week = currentWeek;
+    }
+
+    // 检查是否需要重置日计数
+    if (this.metricsMetaData.today !== currentDay) {
+      resetFields.push('daily');
+      updates.today = currentDay;
+    }
+
+    // 如果有需要重置的字段，执行重置操作
+    if (resetFields.length > 0) {
+      console.log(`[Metrics] Resetting metrics: ${resetFields.join(', ')}`);
+
+      // 重置相应的计数器
+      const resetData: any = {};
+      resetFields.forEach(field => {
+        resetData[field] = 0;
+      });
+
+      await this.DBClient?.metricsData.updateMany({
+        data: resetData
+      });
+
+      // 更新元数据
+      await this.DBClient?.metricsMetaData.update({
+        where: { id: 0 },
+        data: updates
+      });
+
+      // 清除缓存以便重新加载
+      this.metricsData = null;
+      this.metricsMetaData = null;
+    }
+  }
+
+  /**
+   * 获取周标识符 (ISO周)
+   * @param date 日期对象
+   * @returns 格式为 YYYY-WW 的字符串
+   */
+  getWeekIdentifier(date: Date): string {
+    const year = date.getFullYear();
+    const start = new Date(year, 0, 1);
+    const days = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+    const weekNumber = Math.ceil((days + start.getDay() + 1) / 7);
+    return `${year}-${weekNumber.toString().padStart(2, '0')}`;
+  }
+
   async init_db() {
     this.mainData = await this.DBClient?.mainData.findFirst();
     if (!this.mainData) {
@@ -287,5 +395,187 @@ export class Data {
       });
     }
     return true;
+  }
+
+  // ========== 插件数据管理 ==========
+
+  /**
+   * 获取启用的插件列表
+   */
+  async getEnabledPlugins(): Promise<string[]> {
+    try {
+      this.pluginData ??= await this.DBClient?.pluginData.findMany();
+
+      const enabledPlugins = this.pluginData
+        .filter(p => {
+          try {
+            const data = typeof p.data === 'string' ? JSON.parse(p.data) : p.data;
+            return data?.enabled === true;
+          } catch (error) {
+            console.warn(`[Data] Failed to parse plugin data for ${p.id}:`, error);
+            return false;
+          }
+        })
+        .map(p => p.id);
+
+      console.log('[Data] getEnabledPlugins:', enabledPlugins);
+      return enabledPlugins;
+    } catch (error) {
+      console.error('[Data] Error getting enabled plugins:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 检查插件是否启用
+   */
+  async isPluginEnabled(pluginName: string): Promise<boolean> {
+    try {
+      this.pluginData ??= await this.DBClient?.pluginData.findMany();
+      const plugin = this.pluginData.find(p => p.id === pluginName);
+
+      if (!plugin) {
+        return false;
+      }
+
+      try {
+        const data = typeof plugin.data === 'string' ? JSON.parse(plugin.data) : plugin.data;
+        return data?.enabled === true;
+      } catch (error) {
+        console.warn(`[Data] Failed to parse plugin data for ${pluginName}:`, error);
+        return false;
+      }
+    } catch (error) {
+      console.error(`[Data] Error checking plugin ${pluginName}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * 启用插件（在数据库中创建插件数据记录）
+   */
+  async enablePlugin(pluginName: string, initialData: Record<string, any> = {}): Promise<boolean> {
+    try {
+      const dataJson = JSON.stringify({ enabled: true, ...initialData });
+
+      await this.DBClient?.pluginData.upsert({
+        where: { id: pluginName },
+        update: { data: dataJson as InputJsonValue },
+        create: {
+          id: pluginName,
+          data: dataJson as InputJsonValue
+        }
+      });
+
+      this.pluginData = null; // 清除缓存
+      console.log(`[Data] Plugin ${pluginName} enabled`);
+      return true;
+    } catch (error) {
+      console.error(`[Data] Error enabling plugin ${pluginName}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * 禁用插件（从数据库中删除插件数据记录）
+   */
+  async disablePlugin(pluginName: string): Promise<boolean> {
+    try {
+      await this.DBClient?.pluginData.deleteMany({
+        where: { id: pluginName }
+      });
+
+      this.pluginData = null; // 清除缓存
+      console.log(`[Data] Plugin ${pluginName} disabled`);
+      return true;
+    } catch (error) {
+      console.error(`[Data] Error disabling plugin ${pluginName}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * 获取插件数据
+   */
+  async getPluginData(pluginName: string): Promise<Record<string, any>> {
+    this.pluginData ??= await this.DBClient?.pluginData.findMany();
+    const pluginEntry = this.pluginData.find((p) => p.id === pluginName);
+
+    if (!pluginEntry || !pluginEntry.data) {
+      return {};
+    }
+
+    try {
+      return JSON.parse(pluginEntry.data as string) || {};
+    } catch (error) {
+      console.error(`[Data] Error parsing plugin data for ${pluginName}:`, error);
+      return {};
+    }
+  }
+
+  /**
+   * 设置插件数据
+   */
+  async setPluginData(pluginName: string, data: Record<string, any>): Promise<boolean> {
+    try {
+      const dataJson = JSON.stringify(data);
+
+      // 使用 upsert 来更新或创建记录
+      await this.DBClient?.pluginData.upsert({
+        where: { id: pluginName },
+        update: { data: dataJson as InputJsonValue },
+        create: {
+          id: pluginName,
+          data: dataJson as InputJsonValue
+        }
+      });
+
+      // 更新缓存
+      this.pluginData = null; // 清除缓存，下次获取时重新加载
+
+      return true;
+    } catch (error) {
+      console.error(`[Data] Error setting plugin data for ${pluginName}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * 删除插件数据
+   */
+  async deletePluginData(pluginName: string): Promise<boolean> {
+    try {
+      await this.DBClient?.pluginData.deleteMany({
+        where: { id: pluginName }
+      });
+
+      // 更新缓存
+      this.pluginData = null;
+
+      return true;
+    } catch (error) {
+      console.error(`[Data] Error deleting plugin data for ${pluginName}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * 获取所有插件数据概览
+   */
+  async getAllPluginData(): Promise<Record<string, Record<string, any>>> {
+    this.pluginData ??= await this.DBClient?.pluginData.findMany();
+
+    const result: Record<string, Record<string, any>> = {};
+
+    for (const pluginEntry of this.pluginData) {
+      try {
+        result[pluginEntry.id] = JSON.parse(pluginEntry.data as string) || {};
+      } catch (error) {
+        console.error(`[Data] Error parsing plugin data for ${pluginEntry.id}:`, error);
+        result[pluginEntry.id] = {};
+      }
+    }
+
+    return result;
   }
 }
