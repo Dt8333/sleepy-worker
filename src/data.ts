@@ -134,10 +134,14 @@ export class Data {
         }
       });
     }
-    return device_list.map(device => ({
-      ...device,
-      last_updated: Math.floor(device.lastUpdated.getTime() / 1000)
-    }));
+    const deviceMap: { [deviceId: string]: DeviceStatusData & { last_updated: number } } = {};
+    device_list.forEach(device => {
+      deviceMap[device.id] = {
+        ...device,
+        last_updated: Math.floor(device.lastUpdated.getTime() / 1000)
+      };
+    });
+    return deviceMap;
   }
 
   async get_device(id: string) {
