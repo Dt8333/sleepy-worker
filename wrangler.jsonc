@@ -22,4 +22,7 @@
       "custom_domain": true
     }
   ],
+  "limits": {
+    "cpu_ms": 300000
+  }
 }

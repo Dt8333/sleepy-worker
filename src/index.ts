@@ -873,10 +873,19 @@ app.get("/api/status/events", (c) => {
   return streamSSE(c, async (stream) => {
     let last_updated_timestamp: number | null = null;
     let last_heartbeat = Date.now();
+    const connection_start_time = Date.now(); // 记录连接开始时间
+    const MAX_CONNECTION_TIME = 4 * 60 * 1000; // 4分钟 = 240秒
 
     try {
       while (true) {
         let current_time = Date.now();
+
+        // 检查连接是否已超过4分钟，如果是则主动断开连接
+        if (current_time - connection_start_time > MAX_CONNECTION_TIME) {
+          console.log("SSE连接已超过4分钟，主动断开连接");
+          break;
+        }
+
         let current_updated_timestamp = await new Data(c.env).get_last_updated();
         if (last_updated_timestamp !== current_updated_timestamp) {
           last_updated_timestamp = current_updated_timestamp;
