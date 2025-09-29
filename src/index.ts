@@ -881,7 +881,7 @@ app.get("/api/status/events", (c) => {
     let last_updated_timestamp: number | null = null;
     let last_heartbeat = Date.now();
     const connection_start_time = Date.now(); // 记录连接开始时间
-    const MAX_CONNECTION_TIME = 25 * 1000;
+    const MAX_CONNECTION_TIME = 16 * 1000;
 
     try {
       while (true) {
@@ -903,7 +903,7 @@ app.get("/api/status/events", (c) => {
           stream.write(`id: ${last_event_id}\n`);
           stream.write(`event: update\n`);
           stream.write(`data: ${update_data}\n\n`);
-        } else if (current_time - last_heartbeat > 30 * 1000) {
+        } else if (current_time - last_heartbeat > 5 * 1000) {
           last_event_id++;
           last_heartbeat = current_time;
           stream.write(`id: ${last_event_id}\n`);
