@@ -575,10 +575,17 @@ app.get("/", async (c) => {
 
     const statusId = await data.get_status_id();
     const [, statusData] = data.get_status(statusId);
+    // 获取并转换last_updated时间到UTC+8
+    const lastUpdatedTimestamp = await data.get_last_updated() || Math.floor(Date.now() / 1000);
+    const utcDate = new Date(lastUpdatedTimestamp * 1000);
+    // 转换到UTC+8时区
+    const utc8Date = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    const formattedLastUpdated = utc8Date.toISOString().replace('T', ' ').substring(0, 19) + ' (UTC+8)';
+
     const mainCard = await Utils.renderTemplate(c, "main.index.html", "cards", undefined, {
       username: config.page.name,
       status: statusData,
-      last_updated: new Date((await data.get_last_updated() || Math.floor(Date.now() / 1000)) * 1000).toISOString().replace('T', ' ').substring(0, 19) + ' (UTC+8)'
+      last_updated: formattedLastUpdated
     });
     const moreInfoCard = await Utils.renderTemplate(c, "more_info.index.html", "cards", undefined, {
       more_text: moreText,
