@@ -890,6 +890,7 @@ app.get("/api/status/events", (c) => {
         // 检查连接是否已超时，如果是则主动断开连接
         if (current_time - connection_start_time > MAX_CONNECTION_TIME) {
           console.log("SSE连接已超，主动断开连接");
+          await stream.close();
           break;
         }
 
@@ -900,15 +901,15 @@ app.get("/api/status/events", (c) => {
 
           let update_data = JSON.stringify(await query(c));
           last_event_id++;
-          stream.write(`id: ${last_event_id}\n`);
-          stream.write(`event: update\n`);
-          stream.write(`data: ${update_data}\n\n`);
+          await stream.write(`id: ${last_event_id}\n`);
+          await stream.write(`event: update\n`);
+          await stream.write(`data: ${update_data}\n\n`);
         } else if (current_time - last_heartbeat > 5 * 1000) {
           last_event_id++;
           last_heartbeat = current_time;
-          stream.write(`id: ${last_event_id}\n`);
-          stream.write(`event: heartbeat\n`);
-          stream.write(`data: \n\n`);
+          await stream.write(`id: ${last_event_id}\n`);
+          await stream.write(`event: heartbeat\n`);
+          await stream.write(`data: \n\n`);
         }
         await new Promise((r) => setTimeout(r, 1000));
       }
